@@ -1,3 +1,4 @@
+import type { Observer } from "../observability/events.js";
 import type { Registry, Version } from "../registry/index.js";
 import type { Ledger } from "./evidence.js";
 import { executeTool } from "./execute.js";
@@ -15,6 +16,18 @@ export interface LoopRun {
   code: string;
   version: Version;
   maxIterations?: number;
+  /**
+   * Where the run says what it is doing. Optional, and discarded by default: 06 supplies a
+   * collector, and with nothing attached the loop runs exactly as it did before there was
+   * anything to attach.
+   *
+   * The port is the loop's, the way {@link ModelClient} is — the loop decides what is
+   * worth saying and when; a listener only listens. {@link Observer} is imported for its
+   * type alone, which is what keeps 06 out of this module at runtime: the default no-op is
+   * spelled here rather than borrowed from 06, so nothing of the observability layer is
+   * loaded by a run that is not being observed.
+   */
+  emit?: Observer;
 }
 
 /**
@@ -63,6 +76,7 @@ export async function runLoop({
   code,
   version,
   maxIterations = MAX_ITERATIONS,
+  emit = () => {},
 }: LoopRun): Promise<Report> {
   const messages: Message[] = [{ role: "user", content: userPrompt(code, version) }];
 
@@ -72,6 +86,13 @@ export async function runLoop({
       messages,
       tools,
     });
+
+    // Said before anything is done with the turn, because that is the order it happened:
+    // the model reasons its way to a call, and a trace that reported the call first would
+    // invert the one relationship the reasoning exists to show.
+    for (const block of response.content) {
+      if (block.type === "text") emit({ type: "reasoning", text: block.text });
+    }
 
     const calls = response.content.filter((block) => block.type === "tool_use");
 
@@ -107,8 +128,14 @@ export async function runLoop({
       return { version, findings: parsed.data.findings };
     }
 
-    messages.push(resultsFor(calls.map((call) => resultFor(registry, ledger, call))));
+    messages.push(
+      resultsFor(calls.map((call) => resultFor(registry, ledger, call, emit))),
+    );
   }
+
+  // Said before it is thrown, so the trace of a stopped run ends with the reason it
+  // stopped rather than trailing off mid-lookup.
+  emit({ type: "cap-hit", iterations: maxIterations });
 
   throw new IterationCapError(maxIterations);
 }
@@ -121,8 +148,20 @@ function resultFor(
   registry: Registry,
   ledger: Ledger,
   call: Extract<ContentBlock, { type: "tool_use" }>,
+  emit: Observer,
 ): ToolResultBlock {
   const outcome = executeTool(registry, ledger, call.name, call.input);
+
+  // Only a call that left evidence is a retrieval worth tracing, and `ref` is how the
+  // outcome says it did. A refused call — a bad version, an unknown tool — retrieved
+  // nothing, so there is nothing to report but the complaint the model will read.
+  //
+  // The event is the ledger's entry, fetched rather than rebuilt from what we have to
+  // hand: the trace's account of a lookup must be the same one 05 gates citations
+  // against, and two constructions of it are two things that can disagree.
+  const evidence = outcome.ref === undefined ? undefined : ledger.get(outcome.ref);
+
+  if (evidence !== undefined) emit({ type: "retrieval", ...evidence });
 
   return {
     type: "tool_result",

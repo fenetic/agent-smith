@@ -1,5 +1,5 @@
 import type { Registry } from "../registry/index.js";
-import type { Ledger } from "./evidence.js";
+import type { Ledger, RetrievalRef } from "./evidence.js";
 import { isToolName, parseArgs, retrieve, toolNames } from "./tools.js";
 
 /**
@@ -7,10 +7,15 @@ import { isToolName, parseArgs, retrieve, toolNames } from "./tools.js";
  * whether the call failed. `isError` is the model's cue to correct itself rather
  * than reason on — a domain condition (deprecated, removed, unknown) is never one,
  * because the question was valid and the answer is correct.
+ *
+ * `ref` is present exactly when this call left evidence, which is what lets the loop
+ * say so without inspecting the ledger for entries it did not put there. A refused
+ * call carries none, because nothing was retrieved to name.
  */
 export interface ToolOutcome {
   content: string;
   isError?: boolean;
+  ref?: RetrievalRef;
 }
 
 /** A complaint the model is meant to read and act on, rather than a fact to reason from. */
@@ -64,7 +69,7 @@ export function executeTool(
     const result = retrieve(registry, tool, parsed.args);
     const ref = ledger.record(tool, parsed.args, result);
 
-    return { content: JSON.stringify({ ref, result }) };
+    return { content: JSON.stringify({ ref, result }), ref };
   } catch (error) {
     // `atVersion` raises a RangeError for a version the registry never released —
     // a malformed question, and the model's to fix. 02's message already names the

@@ -1,5 +1,6 @@
 import type { GatedReport } from "../guardrails/index.js";
 import { gate } from "../guardrails/index.js";
+import type { Observer } from "../observability/events.js";
 import type { Registry, Version } from "../registry/index.js";
 import { loadRegistry } from "../registry/index.js";
 import { atVersion } from "../retrieval/index.js";
@@ -17,6 +18,15 @@ export interface AuditDeps {
   /** Defaults to the real Anthropic-backed client; a test hands over a scripted one. */
   model: ModelClient;
   maxIterations: number;
+  /**
+   * Where the run says what it is doing. Discarded by default, so an audit with nobody
+   * listening runs exactly as it did before there was anything to listen with.
+   *
+   * The run's boundaries are drawn here rather than in the loop, because this is the only
+   * scope that holds all three of the code, the version, and the report the caller
+   * actually receives — the loop's is a proposal that the gate may yet refuse.
+   */
+  emit: Observer;
 }
 
 /**
@@ -47,12 +57,18 @@ export async function audit(
   deps: Partial<AuditDeps> = {},
 ): Promise<GatedReport> {
   const registry = deps.registry ?? loadRegistry();
+  const emit = deps.emit ?? (() => {});
 
   // Throws a RangeError naming the versions that do exist. Called for that check alone —
   // the loop builds its own resolvers, per lookup, as the model asks for them.
   atVersion(registry, version);
 
   const model = deps.model ?? (await defaultModel());
+
+  // After the version check, deliberately: a trace that opened on a malformed question
+  // would be a record of a run that never started. Nothing before this line is part of
+  // the run — it is the arranging of one.
+  emit({ type: "run-start", code, version });
 
   // The audit owns its evidence: refs name retrievals *within this run*, so a ledger
   // outliving one would let a finding corroborate itself against another audit's facts.
@@ -64,10 +80,15 @@ export async function audit(
     ledger,
     code,
     version,
+    emit,
     ...(deps.maxIterations !== undefined && { maxIterations: deps.maxIterations }),
   });
 
-  return gate(proposed, ledger);
+  const report = gate(proposed, ledger, emit);
+
+  emit({ type: "run-end", report });
+
+  return report;
 }
 
 /**

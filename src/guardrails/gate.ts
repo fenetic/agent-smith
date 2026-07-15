@@ -1,4 +1,5 @@
 import type { Finding, Ledger, Report } from "../agent/index.js";
+import type { Observer } from "../observability/events.js";
 import { coherent, present, real, relevant } from "./checks.js";
 import type {
   CheckName,
@@ -41,15 +42,43 @@ const CHECKS: readonly [
  * to try again: 05 decides whether a verdict is grounded, and what a verdict *should* say
  * is 04's to reason about and 07's to score. Reject-and-record is the whole behaviour.
  */
-export function gate(report: Report, ledger: Ledger): GatedReport {
+export function gate(
+  report: Report,
+  ledger: Ledger,
+  /**
+   * Where the gate says what it refused and why. Optional and discarded by default, so 05
+   * enforces identically with nobody listening — {@link Observer} is imported for its type
+   * alone, and the no-op default is spelled here rather than borrowed from 06, which keeps
+   * the observability layer out of this module at runtime.
+   */
+  emit: Observer = () => {},
+): GatedReport {
   const findings: Finding[] = [];
   const rejections: RejectionRecord[] = [];
 
+  // Counts verdicts named, the way the ledger counts refs handed out: a verdict needs a
+  // handle before anything can be said about it, and the number that names it has to come
+  // from the walk that saw it rather than from the length of a list that only holds the
+  // survivors.
+  let named = 0;
+
   for (const finding of report.findings) {
     const failure = firstFailure(finding, ledger);
+    const ref = `f${++named}`;
 
-    if (failure === undefined) findings.push(finding);
-    else rejections.push({ finding, ...failure });
+    // The proposal, then the ruling on it — in that order, because that is the order they
+    // happened. What the model claimed is recorded whether or not it survives: a trace
+    // holding only the verdicts that passed would show a run that never overreached, which
+    // is the same silence 05 refuses when it records rejections rather than dropping them.
+    emit({ type: "finding", ref, finding });
+
+    if (failure === undefined) {
+      findings.push(finding);
+      emit({ type: "guardrail", findingRef: ref, outcome: "accepted" });
+    } else {
+      rejections.push({ finding, ...failure });
+      emit({ type: "guardrail", findingRef: ref, outcome: "rejected", ...failure });
+    }
   }
 
   // The version is the caller's fact throughout: it scoped every lookup in the run, and
