@@ -1,0 +1,33 @@
+{
+  "name": "design-system-compliance-agent",
+  "version": "0.1.0",
+  "description": "A from-scratch compliance agent that audits code against a versioned design-system registry, and exposes that same registry over MCP.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:integration": "vitest run --project integration",
+    "typecheck": "tsc",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "mcp": "tsx src/mcp/index.ts",
+    "eval": "tsx src/eval/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.111.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.4",
+    "@types/node": "26.1.1",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

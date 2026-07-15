@@ -1,1 +1,15 @@
 .DS_STORE
+.DS_Store
+node_modules/
+dist/
+coverage/
+
+# Secrets — ANTHROPIC_API_KEY lives here, never in the repo.
+.env
+.env.*
+!.env.example
+
+# Persisted per-run traces (Work Item 06) and eval reports (07) are
+# generated artifacts, not source. The demo's pre-captured fallbacks are
+# committed deliberately under docs/, not here.
+traces/
