@@ -1,0 +1,18 @@
+{
+  // Use the TypeScript 7 native language server (the "TypeScript 7" extension,
+  // TypeScriptTeam.native-preview) instead of VS Code's bundled TypeScript.
+  //
+  // Required, not cosmetic: this repo pins typescript@7.0.2, the Go-native
+  // compiler, which ships no tsserver.js. Without this, the editor serves this
+  // project from bundled TypeScript and can misreport correct code — notably the
+  // `.js` import specifiers that `moduleResolution: nodenext` requires
+  // (`./load.js` resolving to load.ts), which look like missing modules to a
+  // language server that isn't applying this project's tsconfig.
+  //
+  // Do NOT set `typescript.tsdk` to node_modules/typescript/lib to "fix" this:
+  // that path has no tsserver.js, so it breaks the built-in extension outright.
+  //
+  // The extension's "Enable TypeScript 7 Language Server" command writes this
+  // same key to user settings; setting it here scopes it to this workspace.
+  "js/ts.experimental.useTsgo": true
+}

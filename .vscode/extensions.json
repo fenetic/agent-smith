@@ -1,0 +1,7 @@
+{
+  // TypeScript 7 is the Go-native compiler: it ships tsc only, with no
+  // tsserver.js, so VS Code's built-in TypeScript extension cannot provide a
+  // language service for this project. This extension supplies the native one.
+  // See docs/architecture.md — "Language config".
+  "recommendations": ["TypeScriptTeam.native-preview"]
+}

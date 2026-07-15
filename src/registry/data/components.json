@@ -1,0 +1,69 @@
+[
+  {
+    "id": "Button",
+    "kind": "component",
+    "description": "A clickable action trigger.",
+    "variants": [
+      {
+        "name": "size=sm",
+        "lifecycle": { "addedIn": "1.0" }
+      },
+      {
+        "name": "size=md",
+        "lifecycle": { "addedIn": "1.0" }
+      },
+      {
+        "name": "size=jumbo",
+        "lifecycle": {
+          "addedIn": "2.0",
+          "deprecatedIn": "5.0",
+          "replacedBy": "size=xl"
+        }
+      },
+      {
+        "name": "size=xl",
+        "lifecycle": { "addedIn": "5.0" }
+      },
+      {
+        "name": "tone=ghost",
+        "lifecycle": { "addedIn": "3.0" }
+      }
+    ],
+    "lifecycle": { "addedIn": "1.0" }
+  },
+  {
+    "id": "Card",
+    "kind": "component",
+    "description": "A surface that groups related content.",
+    "lifecycle": { "addedIn": "1.0" }
+  },
+  {
+    "id": "Modal",
+    "kind": "component",
+    "description": "An overlay that interrupts the page to demand a response.",
+    "lifecycle": {
+      "addedIn": "1.0",
+      "deprecatedIn": "4.0",
+      "replacedBy": "Dialog",
+      "removedIn": "6.0"
+    }
+  },
+  {
+    "id": "Dialog",
+    "kind": "component",
+    "description": "An overlay built on the native dialog element. Replaces Modal.",
+    "lifecycle": { "addedIn": "4.0" }
+  },
+  {
+    "id": "Tooltip",
+    "kind": "component",
+    "description": "A short label revealed on hover or focus.",
+    "lifecycle": { "addedIn": "2.0" }
+  },
+  {
+    "id": "Accordion",
+    "kind": "component",
+    "description": "A vertically stacked set of expandable panels.",
+    "lifecycle": { "addedIn": "5.0" }
+  }
+]

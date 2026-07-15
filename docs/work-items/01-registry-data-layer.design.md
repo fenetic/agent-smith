@@ -67,13 +67,29 @@ TokenEntry
   alias?:    Ref                // points at another token id
   lifecycle: Lifecycle
 
-Ref = string                    // must resolve to an existing entry id
+Ref = string                    // resolves in the scope of whatever owns it
 ```
+
+A `Ref` resolves against **entry ids** everywhere except one place: a *variant's*
+`replacedBy` resolves against its own component's **variant names** (`size=jumbo`
+→ `size=xl`). A variant is not a top-level entry and has no id, so there is no
+entry id for it to name. This costs nothing in ambiguity: nothing downstream
+resolves a variant ref programmatically — 02's query surface is `component(id)`
+and `token(id)`, and 03's tools are `get_component`/`get_token` — so the only
+readers are this loader (which is iterating the component when it checks) and the
+agent (which fetched the component to get there). Neither ever lacks the
+component context.
+
+*Rejected alternative:* qualified refs (`Button#size=xl`), keeping one flat `Ref`
+namespace and allowing a variant to be replaced by a different component. It buys
+uniformity for a resolver that does not exist, at the cost of an id grammar whose
+only parser would be the loader.
 
 ### Invariants the loader enforces
 
-1. **Referential integrity** — every `Ref` (`replacedBy`, `alias`) resolves to a
-   real entry id.
+1. **Referential integrity** — every `Ref` (`replacedBy`, `alias`) resolves within
+   its scope: entry ids for components and tokens, sibling variant names for a
+   variant's `replacedBy`.
 2. **Replacement on deprecation** — `deprecatedIn` present ⇒ `replacedBy` present.
    A deprecation always points somewhere; that is what lets the agent say "use X
    instead."
@@ -81,6 +97,12 @@ Ref = string                    // must resolve to an existing entry id
    by version order.
 4. **Token value XOR alias** — a token has exactly one of `value` or `alias`.
 5. **Known versions** — every `Version` is a member of `meta.versions`.
+6. **Acyclic aliases** — no alias chain loops back on itself. Added because
+   [Work Item 02](02-version-aware-retrieval.design.md) walks these chains and
+   states that a cycle is "a load-time invariant violation surfaced by 01, not a
+   runtime concern here" — so 01 has to actually surface it. Note that a cycle
+   satisfies invariant 1 untouched (every ref in a loop resolves), which is why it
+   needs a check of its own rather than falling out of referential integrity.
 
 ## Aliasing model
 
