@@ -1,12 +1,21 @@
+/**
+ * What `audit` answers with, re-exported from 05 because `audit` puts every finding
+ * through 05's gate before returning it.
+ *
+ * 05 owns these shapes; they are surfaced here because they are already part of this
+ * module's public surface by way of `audit`'s return type, and a caller should not have
+ * to know which module minted the type of the thing it was handed.
+ */
+export type { GatedReport, RejectionRecord } from "../guardrails/index.js";
 export type { AuditDeps } from "./audit.js";
 export { audit } from "./audit.js";
 
 /**
  * The evidence surface, exported for 05 and 06 rather than for a caller running an
- * audit. 05 opens a ledger, runs the loop against it and gates each finding on what it
- * can corroborate; 06 lifts the same entries into a trace. Both need the loop and the
- * ledger separately, which is why `runLoop` takes a ledger instead of making one — and
- * why `audit`, which needs neither, hides both.
+ * audit. 05's checks corroborate a citation against these entries; 06 lifts the same
+ * entries into a trace. Both need the loop and the ledger separately, which is why
+ * `runLoop` takes a ledger instead of making one — and why `audit`, which makes one and
+ * hands it to the gate, still keeps both out of the caller's way.
  */
 export type {
   Ledger,

@@ -1,10 +1,11 @@
+import type { GatedReport } from "../guardrails/index.js";
+import { gate } from "../guardrails/index.js";
 import type { Registry, Version } from "../registry/index.js";
 import { loadRegistry } from "../registry/index.js";
 import { atVersion } from "../retrieval/index.js";
 import { createLedger } from "./evidence.js";
 import { runLoop } from "./loop.js";
 import type { ModelClient } from "./model.js";
-import type { Report } from "./verdict.js";
 
 /**
  * What an audit runs against. Both have sensible answers, so a caller normally supplies
@@ -26,6 +27,14 @@ export interface AuditDeps {
  * one. Everything else — which tools exist, how the loop turns, what evidence was
  * retained — is machinery this signature keeps out of the caller's way.
  *
+ * Every finding leaves through 05's gate, and this is the only door: the loop's report is
+ * a *proposal*, and what a caller receives is what survived being checked against the
+ * evidence. Wiring it here rather than offering it as something a caller may opt into is
+ * the difference between grounding being an invariant and being a convention — an
+ * ungrounded verdict is not discouraged, it has nowhere to go. It is also why the ledger
+ * is made here and kept: gating needs the very evidence the run produced, and this is the
+ * only scope that has both it and the report.
+ *
  * The version is checked here, before a single model turn is spent. That is not an
  * optimisation: an unreleased version is a malformed question, and without this the loop
  * would run, every lookup inside it would fail, and the likeliest outcome is a report
@@ -36,7 +45,7 @@ export async function audit(
   code: string,
   version: Version,
   deps: Partial<AuditDeps> = {},
-): Promise<Report> {
+): Promise<GatedReport> {
   const registry = deps.registry ?? loadRegistry();
 
   // Throws a RangeError naming the versions that do exist. Called for that check alone —
@@ -45,16 +54,20 @@ export async function audit(
 
   const model = deps.model ?? (await defaultModel());
 
-  return await runLoop({
+  // The audit owns its evidence: refs name retrievals *within this run*, so a ledger
+  // outliving one would let a finding corroborate itself against another audit's facts.
+  const ledger = createLedger();
+
+  const proposed = await runLoop({
     registry,
     model,
-    // The audit owns its evidence: refs name retrievals *within this run*, so a ledger
-    // outliving one would let a finding corroborate itself against another audit's facts.
-    ledger: createLedger(),
+    ledger,
     code,
     version,
     ...(deps.maxIterations !== undefined && { maxIterations: deps.maxIterations }),
   });
+
+  return gate(proposed, ledger);
 }
 
 /**
