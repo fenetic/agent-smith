@@ -1,0 +1,251 @@
+[
+  {
+    "type": "run-start",
+    "code": "// Current component, used correctly on active code. Nothing to find — the demo\n// opens on a clean bill of health so 'catches drift' does not read as 'cries wolf'.\nexport function SaveConfirm({ onSave }) {\n  return <Dialog title=\"Save changes?\">Your edits will be published.</Dialog>;\n}\n\n// Billing revamp — first shipped this sprint, actively maintained.\nexport function BillingUpgradePrompt() {\n  return <Modal title=\"Upgrade your plan\">Pick a plan to continue.</Modal>;\n}\n\n// LEGACY — frozen for the 2019 checkout flow. Do not modernise: this page is\n// deleted the day the new checkout ships. Pinned to the v3 design on purpose.\nexport function LegacyCheckoutConfirm() {\n  return <Modal title=\"Confirm order\">Your order is ready to place.</Modal>;\n}\n\n// No marker either way: not dated, not flagged legacy, no sign whether it is maintained.\nexport function Confirm({ onAccept }) {\n  return <Modal title=\"Are you sure?\">This cannot be undone.</Modal>;\n}\n\n// Order summary caption — active code.\nexport const captionStyle = {\n  color: \"color.slate-400\",\n  background: \"color.slate-100\",\n};",
+    "version": "5.0"
+  },
+  {
+    "type": "reasoning",
+    "text": "I'll audit this code by looking up each design-system usage. Let me start by identifying them:\n\n1. `<Dialog>` component\n2. `<Modal>` component (used 3 times)\n3. Tokens `color.slate-400` and `color.slate-100`\n\nLet me look them all up."
+  },
+  {
+    "type": "retrieval",
+    "ref": "r1",
+    "tool": "get_component",
+    "args": {
+      "id": "Dialog",
+      "version": "5.0"
+    },
+    "result": {
+      "status": "active",
+      "asOf": "5.0",
+      "entry": {
+        "id": "Dialog",
+        "kind": "component",
+        "description": "An overlay built on the native dialog element. Replaces Modal.",
+        "lifecycle": {
+          "addedIn": "4.0"
+        }
+      }
+    }
+  },
+  {
+    "type": "retrieval",
+    "ref": "r2",
+    "tool": "get_component",
+    "args": {
+      "id": "Modal",
+      "version": "5.0"
+    },
+    "result": {
+      "status": "deprecated",
+      "asOf": "5.0",
+      "entry": {
+        "id": "Modal",
+        "kind": "component",
+        "description": "An overlay that interrupts the page to demand a response.",
+        "lifecycle": {
+          "addedIn": "1.0",
+          "deprecatedIn": "4.0",
+          "removedIn": "6.0",
+          "replacedBy": "Dialog"
+        }
+      },
+      "deprecatedIn": "4.0",
+      "replacedBy": "Dialog",
+      "removedIn": "6.0"
+    }
+  },
+  {
+    "type": "retrieval",
+    "ref": "r3",
+    "tool": "get_token",
+    "args": {
+      "id": "color.slate-400",
+      "version": "5.0"
+    },
+    "result": {
+      "status": "active",
+      "asOf": "5.0",
+      "entry": {
+        "id": "color.slate-400",
+        "kind": "token",
+        "type": "color",
+        "value": "#94A3B8",
+        "lifecycle": {
+          "addedIn": "1.0"
+        }
+      }
+    }
+  },
+  {
+    "type": "retrieval",
+    "ref": "r4",
+    "tool": "get_token",
+    "args": {
+      "id": "color.slate-100",
+      "version": "5.0"
+    },
+    "result": {
+      "status": "active",
+      "asOf": "5.0",
+      "entry": {
+        "id": "color.slate-100",
+        "kind": "token",
+        "type": "color",
+        "value": "#F1F5F9",
+        "lifecycle": {
+          "addedIn": "1.0"
+        }
+      }
+    }
+  },
+  {
+    "type": "reasoning",
+    "text": "Let me analyze the findings.\n\n**Dialog** (r1): active, correct.\n\n**Modal** (r2): deprecated in 4.0, replaced by Dialog, removed in 6.0. Three usages, each with different intent signals.\n\n**Tokens** (r3, r4): both active. But used together as foreground/background — let me check the contrast. `slate-400` (#94A3B8) on `slate-100` (#F1F5F9). These are both light-ish colors. Let me reason about contrast:\n- #94A3B8 ≈ luminance: R=148,G=163,B=184 → relative luminance ~0.36\n- #F1F5F9 ≈ luminance: R=241,G=245,B=249 → relative luminance ~0.89\n\nContrast ratio ≈ (0.89+0.05)/(0.36+0.05) ≈ 0.94/0.41 ≈ 2.3:1. That's well below WCAG AA (4.5:1 for text, 3:1 for large). This is a text caption color, so the pairing fails contrast — a combination problem even though each token is individually valid."
+  },
+  {
+    "type": "finding",
+    "ref": "f1",
+    "finding": {
+      "target": "<Dialog> at SaveConfirm (line 4)",
+      "outcome": "compliant",
+      "groundedIn": [
+        "r1"
+      ],
+      "rationale": "Dialog is active as of 5.0 and is the current replacement for Modal. It is used on active code and is correct."
+    }
+  },
+  {
+    "type": "guardrail",
+    "findingRef": "f1",
+    "outcome": "accepted"
+  },
+  {
+    "type": "finding",
+    "ref": "f2",
+    "finding": {
+      "target": "<Modal> at BillingUpgradePrompt (line 9)",
+      "outcome": "violation",
+      "groundedIn": [
+        "r2"
+      ],
+      "rationale": "Modal was deprecated in 4.0 (replaced by Dialog, removed in 6.0). The comment marks this as a billing revamp first shipped this sprint and actively maintained — active new work with no legacy intent. Using a deprecated component on active work is a violation.",
+      "suggestedFix": "Replace <Modal> with <Dialog>."
+    }
+  },
+  {
+    "type": "guardrail",
+    "findingRef": "f2",
+    "outcome": "accepted"
+  },
+  {
+    "type": "finding",
+    "ref": "f3",
+    "finding": {
+      "target": "<Modal> at LegacyCheckoutConfirm (line 15)",
+      "outcome": "allowed-exception",
+      "groundedIn": [
+        "r2"
+      ],
+      "rationale": "Modal is deprecated as of 5.0, but the comment explicitly freezes this for the 2019 checkout flow, says 'Do not modernise', notes the page is deleted when the new checkout ships, and states it is pinned to the v3 design on purpose. That is a clear, deliberate legacy signal.",
+      "suggestedFix": "None — intentional legacy; will be removed with the page. Ensure it ships before Modal's 6.0 removal."
+    }
+  },
+  {
+    "type": "guardrail",
+    "findingRef": "f3",
+    "outcome": "accepted"
+  },
+  {
+    "type": "finding",
+    "ref": "f4",
+    "finding": {
+      "target": "<Modal> at Confirm (line 20)",
+      "outcome": "needs-review",
+      "groundedIn": [
+        "r2"
+      ],
+      "rationale": "Modal is deprecated as of 5.0 (replaced by Dialog). The comment explicitly states there is no marker either way — not dated, not flagged legacy, no sign whether it is maintained. Status is deprecated but intent is absent, so a person must decide whether to migrate to Dialog or treat it as frozen.",
+      "suggestedFix": "If active, replace <Modal> with <Dialog>."
+    }
+  },
+  {
+    "type": "guardrail",
+    "findingRef": "f4",
+    "outcome": "accepted"
+  },
+  {
+    "type": "finding",
+    "ref": "f5",
+    "finding": {
+      "target": "captionStyle color/background pairing (color.slate-400 on color.slate-100, lines 33-34)",
+      "outcome": "violation",
+      "groundedIn": [
+        "r3",
+        "r4"
+      ],
+      "rationale": "Both tokens are individually active at 5.0, but as a text-on-background pairing they fail contrast. color.slate-400 (#94A3B8) on color.slate-100 (#F1F5F9) yields a contrast ratio of roughly 2.3:1, below the WCAG AA minimum of 4.5:1 for body text (3:1 for large text). This is active code, so the low-contrast caption is a problem in combination even though neither token is deprecated.",
+      "suggestedFix": "Use a darker foreground token (e.g. a slate-600/700-level color) against slate-100 to reach at least 4.5:1 contrast."
+    }
+  },
+  {
+    "type": "guardrail",
+    "findingRef": "f5",
+    "outcome": "accepted"
+  },
+  {
+    "type": "run-end",
+    "report": {
+      "version": "5.0",
+      "findings": [
+        {
+          "target": "<Dialog> at SaveConfirm (line 4)",
+          "outcome": "compliant",
+          "groundedIn": [
+            "r1"
+          ],
+          "rationale": "Dialog is active as of 5.0 and is the current replacement for Modal. It is used on active code and is correct."
+        },
+        {
+          "target": "<Modal> at BillingUpgradePrompt (line 9)",
+          "outcome": "violation",
+          "groundedIn": [
+            "r2"
+          ],
+          "rationale": "Modal was deprecated in 4.0 (replaced by Dialog, removed in 6.0). The comment marks this as a billing revamp first shipped this sprint and actively maintained — active new work with no legacy intent. Using a deprecated component on active work is a violation.",
+          "suggestedFix": "Replace <Modal> with <Dialog>."
+        },
+        {
+          "target": "<Modal> at LegacyCheckoutConfirm (line 15)",
+          "outcome": "allowed-exception",
+          "groundedIn": [
+            "r2"
+          ],
+          "rationale": "Modal is deprecated as of 5.0, but the comment explicitly freezes this for the 2019 checkout flow, says 'Do not modernise', notes the page is deleted when the new checkout ships, and states it is pinned to the v3 design on purpose. That is a clear, deliberate legacy signal.",
+          "suggestedFix": "None — intentional legacy; will be removed with the page. Ensure it ships before Modal's 6.0 removal."
+        },
+        {
+          "target": "<Modal> at Confirm (line 20)",
+          "outcome": "needs-review",
+          "groundedIn": [
+            "r2"
+          ],
+          "rationale": "Modal is deprecated as of 5.0 (replaced by Dialog). The comment explicitly states there is no marker either way — not dated, not flagged legacy, no sign whether it is maintained. Status is deprecated but intent is absent, so a person must decide whether to migrate to Dialog or treat it as frozen.",
+          "suggestedFix": "If active, replace <Modal> with <Dialog>."
+        },
+        {
+          "target": "captionStyle color/background pairing (color.slate-400 on color.slate-100, lines 33-34)",
+          "outcome": "violation",
+          "groundedIn": [
+            "r3",
+            "r4"
+          ],
+          "rationale": "Both tokens are individually active at 5.0, but as a text-on-background pairing they fail contrast. color.slate-400 (#94A3B8) on color.slate-100 (#F1F5F9) yields a contrast ratio of roughly 2.3:1, below the WCAG AA minimum of 4.5:1 for body text (3:1 for large text). This is active code, so the low-contrast caption is a problem in combination even though neither token is deprecated.",
+          "suggestedFix": "Use a darker foreground token (e.g. a slate-600/700-level color) against slate-100 to reach at least 4.5:1 contrast."
+        }
+      ],
+      "rejections": []
+    }
+  }
+]
